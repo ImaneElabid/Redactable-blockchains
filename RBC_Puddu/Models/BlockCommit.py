@@ -40,12 +40,12 @@ class BlockCommit:
                 if node.blockchain[i].id != miner.blockchain[i].id:  # and (self.node.blockchain[i-1].id == Miner.blockchain[i].previous) and (i>=1):
                     newBlock = miner.blockchain[i]
                     node.blockchain[i] = newBlock
-                    if p.hasTrans and p.Ttechnique == "Full":
+                    if p.enable_transactions and p.transaction_model_type == "Full":
                         BlockCommit.update_transactionsPool(node, newBlock)
             else:                       # Update the local BC by adding last block from miner BC
                 newBlock = miner.blockchain[i]
                 node.blockchain.append(newBlock)
-                if p.hasTrans and p.Ttechnique == "Full":
+                if p.enable_transactions and p.transaction_model_type == "Full":
                     BlockCommit.update_transactionsPool(node, newBlock)
             i += 1
 

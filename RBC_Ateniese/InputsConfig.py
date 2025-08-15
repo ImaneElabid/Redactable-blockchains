@@ -7,83 +7,95 @@ class InputsConfig:
     1 : Bitcoin model
     2 : Ethereum model
     """
+    # ----------------------------------------------------------------------------------
     model = 1
+    # -----------------------------------------------------------------------------------
 
-    ''' Input configurations for the base model '''
+    # ----------------------------
+    # Baseline Model (No Redactions)
+    # ----------------------------
     # if model == 0:
-    #
-    #     ''' Block Parameters '''
-    #     Binterval = 600  # Average time (in seconds)for creating a block in the blockchain
-    #     Bsize = 1.0  # The block size in MB
-    #     Bdelay = 0.42  # average block propogation delay in seconds, #Ref: https://bitslog.wordpress.com/2016/04/28/uncle-mining-an-ethereum-consensus-protocol-flaw/
+    #     ''' --- Block Parameters --- '''
+    #     Binterval = 600  # Avg. block creation time (seconds)
+    #     Bsize = 1.0  # Block size (MB)
+    #     Bdelay = 0.42  # Avg. block propagation delay (seconds)
     #     Breward = 12.5  # Reward for mining a block
     #
-    #     ''' Transaction Parameters '''
-    #     hasTrans = True  # True/False to enable/disable transactions in the simulator
-    #     Ttechnique = "Light"  # Full/Light to specify the way of modelling transactions
-    #     Tn = 10  # The rate of the number of transactions to be created per second
-    #     # The average transaction propagation delay in seconds (Only if Full technique is used)
-    #     Tdelay = 5.1
-    #     Tfee = 0.000062  # The average transaction fee
-    #     Tsize = 0.000546  # The average transaction size  in MB
+    #     ''' --- Transaction Parameters --- '''
+    #     enable_transactions = True  # Enable/disable transactions in simulation
+    #     transaction_model_type = "Light"  # "Full" or "Light" transaction modeling
+    #     transaction_rate = 5  # Transactions generated per second
+    #     Tdelay = 5.1  # Propagation delay (only for "Full" model)
+    #     Tfee = 0.000062  # Avg. transaction fee
+    #     Tsize = 0.0006  # Avg. transaction size (MB) (0.000546)
     #
-    #     ''' Node Parameters '''
-    #     NUM_NODES = 15  # the total number of nodes in the network
-    #     NODES = []
-    #     from Models.Node import Node
-    #     # here as an example we define three nodes by assigning a unique id for each one
-    #     NODES = [Node(id=0, hashPower=50), Node(id=1, hashPower=0), Node(id=2, hashPower=0),
-    #              Node(id=3, hashPower=150), Node(id=4, hashPower=50), Node(id=5, hashPower=150),
-    #              Node(id=6, hashPower=0), Node(id=7, hashPower=100), Node(id=8, hashPower=0),
-    #              Node(id=9, hashPower=0),Node(id=10, hashPower=0), Node(id=11, hashPower=0),
-    #              Node(id=12, hashPower=0), Node(id=13, hashPower=0), Node(id=14, hashPower=100)]
+    #     ''' --- Node Parameters --- '''
+    #     total_nodes = 1000  # Total number of nodes in network
+    #     miner_fraction = 0.3  # Fraction of nodes that are miners
+    #     MAX_HASH_POWER = 200  # Max hash power for a miner
+    #     nodes = []  # List of node objects
     #
-    #     ''' Simulation Parameters '''
-    #     simTime = 100000  # the simulation length (in seconds)
-    #     Runs = 1  # Number of simulation runs
+    #     from Models.Bitcoin.Node import Node
+    #     num_miners = int(total_nodes * miner_fraction)
+    #
+    #     # Create miner nodes
+    #     for node_id in range(num_miners):
+    #         hash_power = random.randint(1, MAX_HASH_POWER)
+    #         nodes.append(Node(id=node_id, hashPower=hash_power))
+    #
+    #     # Create regular (non-mining) nodes
+    #     for node_id in range(num_miners, total_nodes):
+    #         nodes.append(Node(id=node_id, hashPower=0))
+    #
+    #
+    #     ''' --- Simulation Parameters --- '''
+    #     simulation_duration = 1000  # Simulation length (seconds)
+    #     simulation_runs = 1         # Number of simulation runs
 
-    ''' Input configurations for Bitcoin model '''
+    # ----------------------------
+    # Bitcoin Model Configuration
+    # ----------------------------
     if model == 1:
-        ''' Block Parameters '''
-        Binterval = 600  # Average time (in seconds)for creating a block in the blockchain
-        Bsize = 1.0  # The block size in MB
-        Bdelay = 0.42  # average block propogation delay in seconds, #Ref: https://bitslog.wordpress.com/2016/04/28/uncle-mining-an-ethereum-consensus-protocol-flaw/
-        Breward = 12.5  # Reward for mining a block
-        Rreward = 0.03  # Reward for redacting a transaction
+        ''' --- Block Parameters --- '''
+        Binterval = 600  # Avg. block creation time (seconds)
+        Bsize = 1.0      # Block size (MB)
+        Bdelay = 0.42    # Avg. block propagation delay (seconds) #Ref: https://bitslog.wordpress.com/2016/04/28/uncle-mining-an-ethereum-consensus-protocol-flaw/
+        Breward = 12.5   # Reward for mining a block
+        Rreward = 0.03   # Reward for redacting a transaction
 
-        ''' Transaction Parameters '''
-        hasTrans = True  # True/False to enable/disable transactions in the simulator
-        Ttechnique = "Light"  # Full/Light to specify the way of modelling transactions
-        Tn = 5  # The rate of the number of transactions to be created per second
+        ''' --- Transaction Parameters --- '''
+        enable_transactions = True          # Enable/disable transactions in simulation
+        transaction_model_type = "Light"    # "Full" or "Light" transaction modeling
+        transaction_rate = 5                # Transactions generated per second
+        Tdelay = 5.1                        # Propagation delay (only for "Full" model)
+        Tfee = 0.001                        # Avg. transaction fee
+        Tsize = 0.0006                      # Avg. transaction size (MB)
 
-        Tdelay = 5.1 # The average transaction propagation delay in seconds (Only if Full technique is used)
-        Tfee = 0.001  # The average transaction fee
-        Tsize = 0.0006  # The average transaction size in MB
+        ''' --- Node Parameters --- '''
+        total_nodes = 1000        # Total number of nodes in network
+        miner_fraction = 0.3      # Fraction of nodes that are miners (Example: 0.5 ==> 50% of miners)
+        nodes = []                # List of node objects
+        MAX_HASH_POWER = 200      # Max hash power for a miner
 
-        ''' Node Parameters '''
-        NUM_NODES = 1000  # the total number of nodes in the network
-        NODES = []
-        MINERS_PORTION = 0.3 # Example: 0.5 ==> 50% of miners
-        MAX_HASH_POWER = 200
         from Models.Bitcoin.Node import Node
-        num_miners = int(NUM_NODES * MINERS_PORTION)
+        num_miners = int(total_nodes * miner_fraction)
 
-        # Create miners
-        for i in range(num_miners):
+        # Create miner nodes
+        for node_id in range(num_miners):
             hash_power = random.randint(1, MAX_HASH_POWER)
-            NODES.append(Node(id=i, hashPower=hash_power))
-        # Create regular nodes
-        for i in range(num_miners, NUM_NODES):
-            NODES.append(Node(id=i, hashPower=0))
+            nodes.append(Node(id=node_id, hashPower=hash_power))
 
-        ''' Simulation Parameters '''
-        simTime = 100000  # the simulation length (in seconds)
-        Runs = 1  # Number of simulation runs
+        # Create regular (non-mining) nodes
+        for node_id in range(num_miners, total_nodes):
+            nodes.append(Node(id=node_id, hashPower=0))
 
         ''' Redaction Parameters'''
-        hasRedact = True
-        hasMulti = True
-        redactRuns = 1
-        adminNode = random.randint(0, len(NODES))
-        # adminNode = 50
+        enable_redaction = True              # Enable redaction feature
+        enable_multi_party = False # Enable multi-party redaction
+        redaction_attempts = 1               # Number of redaction operations
+        # admin_node_id = random.randint(0, len(nodes)-1)  # Node acting as admin
+        admin_node_id = 10
 
+        ''' --- Simulation Parameters --- '''
+        simulation_duration = 5000  # Simulation length (seconds)
+        simulation_runs = 1  # Number of simulation runs

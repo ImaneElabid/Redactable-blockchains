@@ -1,7 +1,10 @@
+import time
+
 from InputsConfig import InputsConfig as p
 from Models.Consensus import Consensus as c
 from Models.Incentives import Incentives
 import pandas as pd
+import numpy as np
 import os
 from openpyxl import load_workbook
 
@@ -17,21 +20,24 @@ class Statistics:
     blocksResults = []
     blocksSize = []
     profits = [[0 for x in range(7)] for y in
-               range(p.Runs * len(p.NODES))]  # rows number of miners * number of runs, columns =7
+               range(p.simulation_runs * len(p.nodes))]  # rows number of miners * number of runs, columns =7
     index = 0
     original_chain = []
     chain = []
     redactResults = []
     allRedactRuns = []
-    pending_redactions = []
-    candidate_pool = []
-    voting_list = {}
+    pending_mutation = {}       # {proposer: [ref_T,active]}
+    txsToBlockMap = {}      # {tx_set: [blocks.depth]}
+    decryption_keys = {}
+    redact_st = 0
+    redact_et = 0
+    tx_summary = {}     # {ref_T.id: all txs of the corresponding transaction set}
 
     def calculate(t):
         Statistics.global_chain()  # print the global chain
         Statistics.blocks_results(t)  # calculate and print block statistics e.g., # of accepted blocks and stale rate etc
         #  Statistics.profit_results(t)  # calculate and distribute the revenue or reward for miners
-        if p.hasRedact:
+        if p.enable_redaction:
             Statistics.redact_result()  # to calculate the info per redact operation
 
     # Calculate block statistics Results
@@ -48,8 +54,8 @@ class Statistics:
     ############################ Calculate and distibute rewards among the miners #############################
     def profit_results(self):
 
-        for m in p.NODES:
-            i = Statistics.index + m.id * p.Runs
+        for m in p.nodes:
+            i = Statistics.index + m.id * p.simulation_runs
             Statistics.profits[i][0] = m.id
             Statistics.profits[i][1] = m.hashPower
             Statistics.profits[i][2] = m.blocks
@@ -68,7 +74,7 @@ class Statistics:
             block = [i.depth, i.id, i.previous, i.timestamp, i.miner, len(i.transactions), i.size]
             Statistics.chain += [block]
         print("==========THE GLOBAL CHAIN========== of length = "+str(len(Statistics.chain)))
-        print(Statistics.chain)
+        #print(Statistics.chain)
 
 
     def original_global_chain():
@@ -80,20 +86,19 @@ class Statistics:
     ########################################################## generate redaction data ############################################################
     def redact_result():
         i = 0
-        profit_count, op_count = 0, p.redactRuns
-        while i < len(p.NODES):
-            if p.redactRuns == 0:
+        profit_count, op_count = 0, p.redaction_attempts
+        while i < len(p.nodes):
+            if p.redaction_attempts == 0:
                 profit_count = 0
-            if len(p.NODES[i].redacted_tx) != 0 and p.redactRuns > 0:
-                for j in range(len(p.NODES[i].redacted_tx)):
-                    print(f'Deletion/Redaction: Block Depth => {p.NODES[i].redacted_tx[j][0]}, Transaction ID => {p.NODES[i].redacted_tx[j][1].id}')
+            if len(p.nodes[i].redacted_tx) != 0 and p.redaction_attempts > 0:
+                for j in range(len(p.nodes[i].redacted_tx)):
+                    # print(f'Deletion/Redaction: Block Depth => {p.NODES[i].redacted_tx[j][0]}, Transaction ID => {p.NODES[i].redacted_tx[j][1].id}')
                     # Added Miner ID,Block Depth,Transaction ID,Redaction Profit,Performance Time (ms),Blockchain Length,# of Tx
-                    result = [p.NODES[i].id, p.NODES[i].redacted_tx[j][0], p.NODES[i].redacted_tx[j][1].id,
-                              p.NODES[i].redacted_tx[j][2], p.NODES[i].redacted_tx[j][3],
-                              p.NODES[i].redacted_tx[j][4], p.NODES[i].redacted_tx[j][5]]
-                    profit_count += p.NODES[i].redacted_tx[j][2]
+                    result = [p.nodes[i].id, p.nodes[i].redacted_tx[j][0], p.nodes[i].redacted_tx[j][1].id,
+                              p.nodes[i].redacted_tx[j][2], p.nodes[i].redacted_tx[j][3],
+                              p.nodes[i].redacted_tx[j][4], p.nodes[i].redacted_tx[j][5]]
+                    profit_count += p.nodes[i].redacted_tx[j][2]
                     Statistics.redactResults.append(result)
-                    print("here")
             i += 1
         Statistics.allRedactRuns.append([profit_count, op_count])
 
@@ -101,8 +106,8 @@ class Statistics:
     def print_to_excel(fname):
 
         df1 = pd.DataFrame(
-            {'Block Time': [p.Binterval], 'Block Propagation Delay': [p.Bdelay], 'No. Miners': [len(p.NODES)],
-             'Simulation Time': [p.simTime]})
+            {'Block Time': [p.Binterval], 'Block Propagation Delay': [p.Bdelay], 'No. Miners': [len(p.nodes)],
+             'Simulation Time': [p.simulation_duration]})
         # data = {'Stale Rate': Results.staleRate,'# Stale Blocks': Results.staleBlocks,'# Total Blocks': Results.totalBlocks, '# Included Blocks': Results.mainBlocks}
 
         df2 = pd.DataFrame(Statistics.blocksResults)
@@ -119,8 +124,8 @@ class Statistics:
         df4.columns = ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions',
                            'Block Size']
 
-        if p.hasRedact:
-            if p.redactRuns > 0:
+        if p.enable_redaction:
+            if p.redaction_attempts > 0:
                 # blockchain history before redaction
                 df7 = pd.DataFrame(Statistics.original_chain)
                 # df4.columns= ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions','Block Size']
@@ -140,7 +145,7 @@ class Statistics:
         df1.to_excel(writer, sheet_name='InputConfig')
         df2.to_excel(writer, sheet_name='SimOutput')
         df3.to_excel(writer, sheet_name='Profit')
-        if p.hasRedact and p.redactRuns > 0:
+        if p.enable_redaction and p.redaction_attempts > 0:
             # df2.to_csv('Results/time_redact.csv', sep=',', mode='a+', index=False, header=False)
             df7.to_excel(writer, sheet_name='ChainBeforeRedaction')
             df5.to_excel(writer, sheet_name='RedactResult')
@@ -157,7 +162,7 @@ class Statistics:
         else:
             df4.to_excel(writer, sheet_name='Chain')
             # df2.to_csv('Results_new/time.csv', sep=',', mode='a+', index=False, header=False)
-        writer.save()
+        writer.close()
 
 
     ########################################################### Reset all global variables used to calculate the simulation results ###########################################################################################
@@ -171,7 +176,7 @@ class Statistics:
     def reset2():
         Statistics.blocksResults = []
         Statistics.profits = [[0 for x in range(7)] for y in
-                              range(p.Runs * len(p.NODES))]  # rows number of miners * number of runs, columns =7
+                              range(p.simulation_runs * len(p.nodes))]  # rows number of miners * number of runs, columns =7
         Statistics.index = 0
         Statistics.chain = []
         Statistics.redactResults = []

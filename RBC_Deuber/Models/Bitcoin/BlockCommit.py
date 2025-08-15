@@ -26,14 +26,14 @@ class BlockCommit(BaseBlockCommit):
 
     # Block Creation Event
     def generate_block(event: Event):
-        miner = p.NODES[event.block.miner]
+        miner = p.nodes[event.block.miner]
         eventTime = event.time
         blockPrev = event.block.prev_block
 
         if blockPrev.id == miner.last_block().id:  # I am up-to-date and can start mining the block
             Statistics.totalBlocks += 1  # count # of total blocks created!
-            if p.hasTrans:
-                if p.Ttechnique == "Light":
+            if p.enable_transactions:
+                if p.transaction_model_type == "Light":
                     blockTrans, blockSize = LT.execute_transactions()  # Get the created block (transactions and block size)
                     Statistics.blocksSize = blockSize
                     event.block.transactions = blockTrans
@@ -41,12 +41,12 @@ class BlockCommit(BaseBlockCommit):
                     G = compute_hash([blockPrev.prev_hash, blockPrev.transactions])  # inner hash s_{N+1}=H(ctr_N,G(s_N,x_N))
                     event.block.prev_hash = compute_hash([G, blockPrev.block_state])
                     event.block.block_state = compute_hash([event.block.prev_hash, event.block.transactions])
-                elif p.Ttechnique == "Full":
+                elif p.transaction_model_type == "Full":
                     blockTrans, blockSize = FT.execute_transactions(miner, eventTime)
                     event.block.transactions = blockTrans
                     event.block.size = blockSize
 
-                if p.hasRedact:
+                if p.enable_redaction:
                     if len(Statistics.pending_redactions) > 0:  # if there is some redaction proposals
                         Statistics.redact_st = time.perf_counter()
                         for index, candidate_block in Statistics.pending_redactions:  # get pending candidates
@@ -64,7 +64,7 @@ class BlockCommit(BaseBlockCommit):
                             BlockCommit.evaluateVoteBest(candidate_block)   # evaluate if candidate got enough votes
             miner.blockchain.append(event.block)
 
-            if p.hasTrans and p.Ttechnique == "Light":
+            if p.enable_transactions and p.transaction_model_type == "Light":
                 LT.create_transactions()  # generate new transactions
 
             BlockCommit.propagate_block(event.block)
@@ -72,16 +72,16 @@ class BlockCommit(BaseBlockCommit):
 
     # Block Receiving Event
     def receive_block(event):
-        miner = p.NODES[event.block.miner]
+        miner = p.nodes[event.block.miner]
         currentTime = event.time
         blockPrev = event.block.previous  # previous block id
-        node = p.NODES[event.node]  # recipient
+        node = p.nodes[event.node]  # recipient
         lastBlockId = node.last_block().id  # the id of last block
 
         #### case 1: the received block is built on top of the last block according to the recipient's blockchain ####
         if blockPrev == lastBlockId:
             node.blockchain.append(event.block)  # append the block to local blockchain
-            if p.hasTrans and p.Ttechnique == "Full":
+            if p.enable_transactions and p.transaction_model_type == "Full":
                 BlockCommit.update_transactionsPool(node, event.block)
             BlockCommit.generate_next_block(node, currentTime)  # Start mining or working on the next block
 
@@ -92,7 +92,7 @@ class BlockCommit(BaseBlockCommit):
                 BlockCommit.update_local_blockchain(node, miner, depth)
                 BlockCommit.generate_next_block(node, currentTime)  # Start mining or working on the next block
 
-            if p.hasTrans and p.Ttechnique == "Full":
+            if p.enable_transactions and p.transaction_model_type == "Full":
                 BlockCommit.update_transactionsPool(node, event.block)  # not sure yet.
 
         if Statistics.totalBlocks >= 3:
@@ -110,11 +110,11 @@ class BlockCommit(BaseBlockCommit):
 
     def generate_initial_events():
         currentTime = 0
-        for node in p.NODES:
+        for node in p.nodes:
             BlockCommit.generate_next_block(node, currentTime)
 
     def propagate_block(block: Block):
-        for recipient in p.NODES:
+        for recipient in p.nodes:
             if recipient.id != block.miner:
                 blockDelay = Network.block_prop_delay()
                 # draw block propagation delay from a distribution !! or you can assign 0 to ignore block propagation delay
@@ -191,7 +191,7 @@ class BlockCommit(BaseBlockCommit):
             t = (Statistics.redact_et - Statistics.redact_st)* 1000
             print(f">>>> Redaction succeeded in {t} ms <<<<")
             # record the block depth, redacted transaction, miner reward = 0 and performance time = 0
-            miner = [node for node in p.NODES if node.id == block.miner][0]
+            miner = [node for node in p.nodes if node.id == block.miner][0]
             # Statistics.redacted_tx.append(
             #  [block.depth, block.transactions[block.edited_tx], 0, 0, miner.blockchain_length(),
             #  len(block.transactions)])

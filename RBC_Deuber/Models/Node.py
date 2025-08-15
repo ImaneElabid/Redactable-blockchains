@@ -23,7 +23,7 @@ class Node(object):
     # Generate the Genesis block and append it to the local blockchain for all nodes
     def generate_genesis_block():
         from InputsConfig import InputsConfig as p
-        for node in p.NODES:
+        for node in p.nodes:
             node.blockchain.append(Block())
         r = 0
 
@@ -38,7 +38,7 @@ class Node(object):
     # reset the state of blockchains for all nodes in the network (before starting the next run) 
     def resetState():
         from InputsConfig import InputsConfig as p
-        for node in p.NODES:
+        for node in p.nodes:
             node.blockchain = []  # create an array for each miner to store chain state locally
             node.transactionsPool = []
             node.blocks = 0  # total number of blocks mined in the main chain

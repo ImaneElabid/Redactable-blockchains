@@ -29,18 +29,18 @@ class BlockCommit(BaseBlockCommit):
 
     # Block Creation Event
     def generate_block(event):
-        miner = p.NODES[event.block.miner]
+        miner = p.nodes[event.block.miner]
         minerId = miner.id
         eventTime = event.time
         blockPrev = event.block.previous
         if blockPrev == miner.last_block().id:
             Statistics.totalBlocks += 1  # count # of total blocks created!
 
-            if p.hasTrans:
-                if p.Ttechnique == "Light":
+            if p.enable_transactions:
+                if p.transaction_model_type == "Light":
                     blockTrans, blockSize = LT.execute_transactions()  #Get the created block (transactions and block size)
                     Statistics.blocksSize =blockSize
-                elif p.Ttechnique == "Full":
+                elif p.transaction_model_type == "Full":
                     blockTrans, blockSize = FT.execute_transactions(miner, eventTime)
 
                 event.block.transactions = blockTrans
@@ -48,7 +48,7 @@ class BlockCommit(BaseBlockCommit):
                 event.block.usedgas = blockSize
 
                 # hash the transactions and previous hash value
-                if p.hasRedact:
+                if p.enable_redaction:
                     event.block.r = random.randint(1, q)
                     x = json.dumps([[i.id for i in event.block.transactions], event.block.previous],
                                    sort_keys=True).encode()
@@ -56,7 +56,7 @@ class BlockCommit(BaseBlockCommit):
                     event.block.id = chameleonHash(miner.PK, m, event.block.r)
             miner.blockchain.append(event.block)
 
-            if p.hasTrans and p.Ttechnique == "Light":
+            if p.enable_transactions and p.transaction_model_type == "Light":
                 LT.create_transactions()  # generate transactions
 
             BlockCommit.propagate_block(event.block)
@@ -64,17 +64,17 @@ class BlockCommit(BaseBlockCommit):
 
     # Block Receiving Event
     def receive_block(event):
-        miner = p.NODES[event.block.miner]
+        miner = p.nodes[event.block.miner]
         minerId = miner.id
         currentTime = event.time
         blockPrev = event.block.previous  # previous block id
-        node = p.NODES[event.node]  # recipient
+        node = p.nodes[event.node]  # recipient
         lastBlockId = node.last_block().id  # the id of last block
 
         #### case 1: the received block is built on top of the last block according to the recipient's blockchain ####
         if blockPrev == lastBlockId:
             node.blockchain.append(event.block)  # append the block to local blockchain
-            if p.hasTrans and p.Ttechnique == "Full":
+            if p.enable_transactions and p.transaction_model_type == "Full":
                 BlockCommit.update_transactionsPool(node, event.block)
             BlockCommit.generate_next_block(node, currentTime)  # Start mining or working on the next block
 
@@ -85,7 +85,7 @@ class BlockCommit(BaseBlockCommit):
                 BlockCommit.update_local_blockchain(node, miner, depth)
                 BlockCommit.generate_next_block(node, currentTime)  # Start mining or working on the next block
 
-            if p.hasTrans and p.Ttechnique == "Full":
+            if p.enable_transactions and p.transaction_model_type == "Full":
                 BlockCommit.update_transactionsPool(node, event.block)  # not sure yet.
 
 
@@ -97,11 +97,11 @@ class BlockCommit(BaseBlockCommit):
 
     def generate_initial_events():
         currentTime = 0
-        for node in p.NODES:
+        for node in p.nodes:
             BlockCommit.generate_next_block(node, currentTime)
 
     def propagate_block(block):
-        for recipient in p.NODES:
+        for recipient in p.nodes:
             if recipient.id != block.miner:
                 blockDelay = Network.block_prop_delay()
                 # draw block propagation delay from a distribution !! or assign 0 to ignore block propagation delay
@@ -109,21 +109,21 @@ class BlockCommit(BaseBlockCommit):
 
     def setupSecretSharing():
         global SKlist, PKlist, rlist, shares
-        SKlist, PKlist = KeyGen(ch.p, q, g, len(p.NODES))
-        rlist = ch.getr(len(p.NODES), q)
-        for i, node in enumerate(p.NODES):
+        SKlist, PKlist = KeyGen(ch.p, q, g, len(p.nodes))
+        rlist = ch.getr(len(p.nodes), q)
+        for i, node in enumerate(p.nodes):
             node.PK = PKlist[i]
             node.SK = SKlist[i]
 
     def generate_redaction_event(redactRuns):
         t1 = time.time()
         i = 0
-        miner_list = [node for node in p.NODES if node.hashPower > 0]
+        miner_list = [node for node in p.nodes if node.hashPower > 0]
         while i < redactRuns:
-            if p.hasMulti:
+            if p.enable_multi_party:
                 miner = random.choice(miner_list)
             else:
-                miner = p.NODES[p.adminNode]
+                miner = p.nodes[p.admin_node_id]
             r = random.randint(1, 2)
             # r =2
             block_index = random.randint(1, len(miner.blockchain)-1)
@@ -153,21 +153,21 @@ class BlockCommit(BaseBlockCommit):
         m2 = hashlib.sha256(x2).hexdigest()
         # Forge new r
         # t1 = time.time()
-        if p.hasMulti:
+        if p.enable_multi_party:
             # rlist = block.r
-            miner_list = [miner for miner in p.NODES if miner.hashPower > 0]
+            miner_list = [miner for miner in p.nodes if miner.hashPower > 0]
             # propagation delay in sharing secret key
             # time.sleep(0.005)
             # SKlist[miner.id] = ss.secret_share(SKlist[miner.id], minimum=len(miner_list), shares=len(p.NODES))
             # r2 = forgeSplit(SKlist, m1, rlist, m2, q, miner.id)
             # rlist[miner.id] = r2
-            ss.secret_share(SK, minimum=len(miner_list), shares=len(p.NODES))
+            ss.secret_share(SK, minimum=len(miner_list), shares=len(p.nodes))
             r2 = forge(SK, m1, block.r, m2)
             # print(f'rlist_temp: {rlist}')
             id2 = chameleonHash(PK, m2, r2)
             # print(f'block new id: {id2}')
             block.r = r2
-            for node in p.NODES:
+            for node in p.nodes:
                 if node.id != miner.id:
                     if node.blockchain[i]:
                         node.blockchain[i].transactions = block.transactions
@@ -207,22 +207,22 @@ class BlockCommit(BaseBlockCommit):
         m2 = hashlib.sha256(x2).hexdigest()
         # Forge new r
         # t1 = time.time()
-        if p.hasMulti:
+        if p.enable_multi_party:
             rlist = block.r
             # print(f'rlist_temp: {rlist}')
             # print(f'block id: {block.id}')
             # here we are sending the secret key i to the performing miner
-            miner_list = [miner for miner in p.NODES if miner.hashPower > 0]
+            miner_list = [miner for miner in p.nodes if miner.hashPower > 0]
             # propagation delay in sharing secret key
             time.sleep(0.005)
-            ss.secret_share(SK, minimum=len(miner_list), shares=len(p.NODES))
+            ss.secret_share(SK, minimum=len(miner_list), shares=len(p.nodes))
             r2 = forge(SK, m1, block.r, m2)
             rlist[miner.id] = r2
             # print(f'rlist_temp: {rlist}')
             id2 = chameleonHash(PK, m2, r2)
             # print(f'block new id: {id2}')
             block.r = r2
-            for node in p.NODES:
+            for node in p.nodes:
                 if node.id != miner.id:
                     if node.blockchain[i]:
                         node.blockchain[i].transactions = block.transactions

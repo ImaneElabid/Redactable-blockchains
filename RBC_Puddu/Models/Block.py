@@ -1,9 +1,6 @@
 import hashlib
 import json
 
-from Models.Utils import get_hash, compute_hash
-
-
 class Block(object):
     """ Defines the base Block model.
 
@@ -28,8 +25,6 @@ class Block(object):
                  miner=None,
                  transactions=[],
                  size=1.0,
-                 prev_hash="0",
-                 block_state=compute_hash(["0", []]),
                  edited_tx=None
                  ):
         self.depth = depth
@@ -40,6 +35,3 @@ class Block(object):
         self.miner = miner
         self.transactions = transactions or []
         self.size = size
-        self.prev_hash = prev_hash
-        self.block_state = block_state
-        self.edited_tx = edited_tx

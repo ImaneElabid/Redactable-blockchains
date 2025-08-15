@@ -9,7 +9,7 @@ class Incentives:
 
     def distribute_rewards():
         for bc in c.global_chain:
-            for m in p.NODES:
+            for m in p.nodes:
                 if bc.miner == m.id:
                     m.blocks += 1
                     m.balance += p.Breward  # increase the miner balance by the block reward

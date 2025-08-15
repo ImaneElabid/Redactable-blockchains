@@ -46,14 +46,14 @@ class LightTransaction():
     def create_transactions():
         LightTransaction.pending_transactions = []
         pool = LightTransaction.pending_transactions
-        Psize = int(p.Tn * p.Binterval)  # (The nbr of tx to be created per s / time (in s) creating a block)
+        Psize = int(p.transaction_rate * p.Binterval)  # (The nbr of tx to be created per s / time (in s) creating a block)
         Bsize =0
         for i in range(Psize):
             # assign values for transactions' attributes. You can ignore some attributes if not of an interest, and the default values will then be used
             tx = Transaction()
             tx.id = random.randrange(100000000000)
-            tx.sender = random.choice(p.NODES).id
-            tx.to = random.choice(p.NODES).id
+            tx.sender = random.choice(p.nodes).id
+            tx.to = random.choice(p.nodes).id
             tx.size = random.expovariate(1 / p.Tsize)
             tx.fee = random.expovariate(1 / p.Tfee)
             pool += [tx]
@@ -84,19 +84,19 @@ class LightTransaction():
 class FullTransaction():
 
     def create_transactions():
-        Psize = int(p.Tn * p.simTime)
+        Psize = int(p.transaction_rate * p.simulation_duration)
 
         for i in range(Psize):
             # assign values for transactions' attributes. You can ignore some attributes if not of an interest, and the default values will then be used
             tx = Transaction()
 
             tx.id = random.randrange(100000000000)
-            creation_time = random.randint(0, p.simTime - 1)
+            creation_time = random.randint(0, p.simulation_duration - 1)
             receive_time = creation_time
             tx.timestamp = [creation_time, receive_time]
-            sender = random.choice(p.NODES)
+            sender = random.choice(p.nodes)
             tx.sender = sender.id
-            tx.to = random.choice(p.NODES).id
+            tx.to = random.choice(p.nodes).id
             tx.size = random.expovariate(1 / p.Tsize)
             tx.fee = random.expovariate(1 / p.Tfee)
 
@@ -106,7 +106,7 @@ class FullTransaction():
     # Transaction propogation & preparing pending lists for miners
     def transaction_prop(tx):
         # Fill each pending list. This is for transaction propagation
-        for i in p.NODES:
+        for i in p.nodes:
             if tx.sender != i.id:
                 t = copy.deepcopy(tx)
                 t.timestamp[1] = t.timestamp[1] + Network.tx_prop_delay()  # transaction propogation delay in seconds
