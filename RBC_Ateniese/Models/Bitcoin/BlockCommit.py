@@ -29,6 +29,7 @@ class BlockCommit(BaseBlockCommit):
 
     # Block Creation Event
     def generate_block(event):
+        startB = time.perf_counter()
         miner = p.nodes[event.block.miner]
         minerId = miner.id
         eventTime = event.time
@@ -49,17 +50,27 @@ class BlockCommit(BaseBlockCommit):
 
                 # hash the transactions and previous hash value
                 if p.enable_redaction:
-                    event.block.r = random.randint(1, q)
                     x = json.dumps([[i.id for i in event.block.transactions], event.block.previous],
                                    sort_keys=True).encode()
                     m = hashlib.sha256(x).hexdigest()
-                    event.block.id = chameleonHash(miner.PK, m, event.block.r)
+                    if p.enable_multi_party:
+                        event.block.r = [random.randint(1, q) for _ in range(len(p.nodes))]
+                        event.block.id = chameleonHashSplit(PKlist, g, m, event.block.r, len(p.nodes))
+                    else:
+                        event.block.r = random.randint(1, q)
+                        event.block.id = chameleonHash(miner.PK, m, event.block.r)
+
+                    # event.block.id = chameleonHash(miner.PK, m, event.block.r)
             miner.blockchain.append(event.block)
 
             if p.enable_transactions and p.transaction_model_type == "Light":
                 LT.create_transactions()  # generate transactions
 
             BlockCommit.propagate_block(event.block)
+            endB = time.perf_counter()
+            latency = endB - startB
+            # Statistics.block_creation_times.append((latency))
+            # print(f"[Block Created] ID: {event.block.id} | Creation Time: {latency:.6f} seconds")
             BlockCommit.generate_next_block(miner, eventTime)  # Start mining or working on the next block
 
     # Block Receiving Event
@@ -134,7 +145,7 @@ class BlockCommit(BaseBlockCommit):
                 BlockCommit.delete_tx(miner, block_index, tx_index)
             t2=time.time()
             t = (t2 - t1) * 1000  # in ms
-            print(f"Redaction time = {t} ms")
+            print(f"Redaction time = {t:6f} ms")
             i += 1
 
     def delete_tx(miner, i, tx_i):
@@ -146,41 +157,38 @@ class BlockCommit(BaseBlockCommit):
 
         # record the block index and deleted transaction object, miner reward  = 0 and performance time = 0
         # and also the blockchain size, number of transaction of that action block
+        # removed_tx = block.transactions.pop(tx_i)
         miner.redacted_tx.append([i, block.transactions.pop(tx_i), 0, 0, miner.blockchain_length(), len(block.transactions)])
 
         # Store the modified block data
         x2 = json.dumps([[i.id for i in block.transactions], block.previous], sort_keys=True).encode()
         m2 = hashlib.sha256(x2).hexdigest()
         # Forge new r
-        # t1 = time.time()
         if p.enable_multi_party:
-            # rlist = block.r
-            miner_list = [miner for miner in p.nodes if miner.hashPower > 0]
+            # block.r should be a list of randomness values for multi-party
+            rlist = block.r
+            miner_list = [node for node in p.nodes if node.hashPower > 0]
             # propagation delay in sharing secret key
             # time.sleep(0.005)
-            # SKlist[miner.id] = ss.secret_share(SKlist[miner.id], minimum=len(miner_list), shares=len(p.NODES))
-            # r2 = forgeSplit(SKlist, m1, rlist, m2, q, miner.id)
-            # rlist[miner.id] = r2
             ss.secret_share(SK, minimum=len(miner_list), shares=len(p.nodes))
-            r2 = forge(SK, m1, block.r, m2)
-            # print(f'rlist_temp: {rlist}')
-            id2 = chameleonHash(PK, m2, r2)
-            # print(f'block new id: {id2}')
-            block.r = r2
+            r2 = ch.forgeSplit(SKlist, m1, rlist, m2, q, miner.id)
+            rlist[miner.id] = r2
+            block.r = rlist
+            # Compute new block id using chameleonHashSplit
+            block.id = ch.chameleonHashSplit(PKlist, g, m2, rlist, len(p.nodes))
+            # propagate change to other nodes
             for node in p.nodes:
                 if node.id != miner.id:
                     if node.blockchain[i]:
                         node.blockchain[i].transactions = block.transactions
                         node.blockchain[i].r = block.r
         else:
-            r2 = forge(SK, m1, block.r, m2)
-            id2 = chameleonHash(PK, m2, r2)
-
+            # Centralized setting
+            r2 = ch.forge(SK, m1, block.r, m2)
             block.r = r2
-        t2 = time.time()
-        block.id = id2
+            block.id = ch.chameleonHash(PK, m2, r2)
         # Calculate the performance time per operation
-        # t2 = time.time()
+        t2 = time.time()
         t = (t2 - t1) * 1000 # in ms
         # redact operation is more expensive than mining
         # print(f"Redaction succeeded in {t}")
@@ -202,6 +210,7 @@ class BlockCommit(BaseBlockCommit):
         block.transactions[tx_i].id = random.randrange(100000000000)
         # record the block depth, redacted transaction, miner reward = 0 and performance time = 0
         miner.redacted_tx.append([i, block.transactions[tx_i], 0, 0, miner.blockchain_length(), len(block.transactions)])
+
         # Store the modified block data
         x2 = json.dumps([[i.id for i in block.transactions], block.previous], sort_keys=True).encode()
         m2 = hashlib.sha256(x2).hexdigest()
@@ -209,32 +218,24 @@ class BlockCommit(BaseBlockCommit):
         # t1 = time.time()
         if p.enable_multi_party:
             rlist = block.r
-            # print(f'rlist_temp: {rlist}')
-            # print(f'block id: {block.id}')
-            # here we are sending the secret key i to the performing miner
-            miner_list = [miner for miner in p.nodes if miner.hashPower > 0]
-            # propagation delay in sharing secret key
-            time.sleep(0.005)
-            ss.secret_share(SK, minimum=len(miner_list), shares=len(p.nodes))
-            r2 = forge(SK, m1, block.r, m2)
+            r2 = ch.forgeSplit([node.SK for node in p.nodes], m1, rlist, m2, ch.q, miner.id)
             rlist[miner.id] = r2
-            # print(f'rlist_temp: {rlist}')
-            id2 = chameleonHash(PK, m2, r2)
-            # print(f'block new id: {id2}')
-            block.r = r2
+            block.r = rlist
+            block.id = ch.chameleonHashSplit([node.PK for node in p.nodes], ch.g, m2, rlist, len(p.nodes))
+            # propagate change to other nodes
             for node in p.nodes:
                 if node.id != miner.id:
                     if node.blockchain[i]:
-                        node.blockchain[i].transactions = block.transactions
-                        node.blockchain[i].r = block.r
+                        node.blockchain[i].transactions = block.transactions.copy()
+                        node.blockchain[i].r = block.r.copy()
         else:
-            r2 = forge(SK, m1, block.r, m2)
-            id2 = chameleonHash(PK, m2, r2)
+            r2 = ch.forge(ch.SK, m1, block.r, m2)
             block.r = r2
-        t2 = time.time()
-        block.id = id2
+            block.id = ch.chameleonHash(PK, m2, r2)
         # Calculate the performance time per operation
+        t2 = time.time()
         t = (t2 - t1) * 1000 # in ms
+        block.redaction_time =t
         # print(f"Redaction succeeded in {t}")
         # redact operation is more expensive than mining
         reward = random.expovariate(1 / p.Rreward)
