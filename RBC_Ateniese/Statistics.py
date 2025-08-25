@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 
 
 class Statistics:
-    # Global variables used to calculate and print stimulation results
+    # Global variables used to calculate and print simulation results
     totalBlocks = 0
     mainBlocks = 0
     staleBlocks = 0
@@ -27,6 +27,7 @@ class Statistics:
     def calculate(t):
         Statistics.global_chain()  # print the global chain
         Statistics.blocks_results(t)  # calculate and print block statistics e.g., # of accepted blocks and stale rate etc
+        Statistics.profit_results()  # calculate and distribute the revenue or reward for miners
         if p.enable_redaction:
             Statistics.redact_result()  # to calculate the info per redact operation
 
@@ -41,21 +42,21 @@ class Statistics:
         Statistics.blockData = [Statistics.totalBlocks, Statistics.mainBlocks, Statistics.staleBlocks, Statistics.staleRate, trans, t, str(Statistics.blocksSize)]
         Statistics.blocksResults += [Statistics.blockData]
 
-    ############################ Calculate and distibute rewards among the miners #############################
-    def profit_results(self):
-
+    ############################ Calculate and distribute rewards among the miners #############################
+    def profit_results():
         for m in p.nodes:
             i = Statistics.index + m.id * p.simulation_runs
             Statistics.profits[i][0] = m.id
             Statistics.profits[i][1] = m.hashPower
             Statistics.profits[i][2] = m.blocks
-            Statistics.profits[i][3] = round(m.blocks / Statistics.mainBlocks * 100, 2)
+            if Statistics.mainBlocks > 0:
+                Statistics.profits[i][3] = round(m.blocks / Statistics.mainBlocks * 100, 2)
+            else:
+                Statistics.profits[i][3] = 0
             Statistics.profits[i][4] = 0
             Statistics.profits[i][5] = 0
             Statistics.profits[i][6] = m.balance
-        #print("Profits :")
-        #print(Statistics.profits)
-
+        
         Statistics.index += 1
 
     ########################################################### prepare the global chain  ###########################################################################################
@@ -64,14 +65,11 @@ class Statistics:
             block = [i.depth, i.id, i.previous, i.timestamp, i.miner, len(i.transactions), i.size]
             Statistics.chain += [block]
         print("Length of CHAIN = "+str(len(Statistics.chain)))
-        # print(Statistics.chain)
-
 
     def original_global_chain():
         for i in c.global_chain:
             block = [i.depth, i.id, i.previous, i.timestamp, i.miner, len(i.transactions), str(i.size)]
             Statistics.original_chain += [block]
-
 
     ########################################################## generate redaction data ############################################################
     def redact_result():
@@ -94,56 +92,50 @@ class Statistics:
 
     ########################################################### Print simulation results to Excel ###########################################################################################
     def print_to_excel(fname):
-
         df1 = pd.DataFrame(
             {'Block Time': [p.Binterval], 'Block Propagation Delay': [p.Bdelay], 'No. Miners': [len(p.nodes)],
              'Simulation Time': [p.simulation_duration]})
-        # data = {'Stale Rate': Results.staleRate,'# Stale Blocks': Results.staleBlocks,'# Total Blocks': Results.totalBlocks, '# Included Blocks': Results.mainBlocks}
 
         df2 = pd.DataFrame(Statistics.blocksResults)
         df2.columns = ['Total Blocks', 'Main Blocks', 'Stale Blocks', 'Stale Rate',
-                       '# transactions', 'Performance Time', 'Block sizeeeeeee']
+                       '# transactions', 'Performance Time (ms)', 'Block Size']
 
-        # df3 = pd.DataFrame(Statistics.profits)
-        # df3.columns = ['Miner ID', '% Hash Power', '# Mined Blocks', '% of main blocks', '# Uncle Blocks',
-        #  '% of uncles', 'Profit (in ETH)']
+        df3 = pd.DataFrame(Statistics.profits)
+        df3.columns = ['Miner ID', 'Hash Power', '# Mined Blocks', '% of main blocks', '# Uncle Blocks',
+                       '% of uncles', 'Profit (ETH)']
 
         df4 = pd.DataFrame(Statistics.chain)
-        print(df4)
-        # df4.columns= ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions','Block Size']
         df4.columns = ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions',
-                           'Block Size']
+                       'Block Size']
 
         if p.enable_redaction:
             if p.redaction_attempts > 0:
                 # blockchain history before redaction
                 df7 = pd.DataFrame(Statistics.original_chain)
-                # df4.columns= ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions','Block Size']
                 df7.columns = ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID',
-                                   '# transactions',
-                                   'Block Size']
+                               '# transactions', 'Block Size']
 
                 # Redaction results
                 df5 = pd.DataFrame(Statistics.redactResults)
-                print(df5)
                 df5.columns = ['Miner ID', 'Block Depth', 'Transaction ID', 'Redaction Profit', 'Performance Time (ms)', 'Blockchain Length', '# of Tx']
 
             df6 = pd.DataFrame(Statistics.allRedactRuns)
-            print(df6)
             df6.columns = ['Total Profit/Cost', 'Redact op runs']
+
         writer = pd.ExcelWriter(fname, engine='xlsxwriter')
         df1.to_excel(writer, sheet_name='InputConfig')
         df2.to_excel(writer, sheet_name='SimOutput')
-        # df3.to_excel(writer, sheet_name='Profit')
+        df3.to_excel(writer, sheet_name='Profit')
+        
         if p.enable_redaction and p.redaction_attempts > 0:
             df2.to_csv('Results/time_redact.csv', sep=',', mode='a+', index=False, header=True, encoding='utf-8')
             df7.to_excel(writer, sheet_name='ChainBeforeRedaction')
             df5.to_excel(writer, sheet_name='RedactResult')
             df4.to_excel(writer, sheet_name='Chain')
             # Add the result to transaction/performance time csv to statistic analysis
-            # df5.to_csv('Results_new/tx_time.csv', sep=',', mode='a+', index=False, header=True,encoding='utf-8')
-            # Add the result to block length/performance time csv to statistic analysis, and fixed the number of transactions
-            df5.to_csv('Results/block_time.csv', sep=',', mode='a+', index=False, header=True,encoding='utf-8')
+            df5.to_csv('Results/tx_time.csv', sep=',', mode='a+', index=False, header=True, encoding='utf-8')
+            # Add the result to block length/performance time csv to statistic analysis
+            df5.to_csv('Results/block_time.csv', sep=',', mode='a+', index=False, header=True, encoding='utf-8')
             if p.enable_multi_party:
                 df5.to_csv('Results/block_time_den.csv', sep=',', mode='a+', index=False, header=True)
                 df5.to_csv('Results/tx_time_den.csv', sep=',', mode='a+', index=False, header=True)
@@ -152,8 +144,122 @@ class Statistics:
         else:
             df4.to_excel(writer, sheet_name='Chain')
             df2.to_csv('Results/time.csv', sep=',', mode='a+', index=False, header=True)
+        
         writer.close()
 
+    ########################################################### Display comprehensive metrics ###########################################################################################
+    def display_metrics():
+        """Display all available metrics for assessment"""
+        print("\n" + "="*80)
+        print("RBC_ATENIESE BLOCKCHAIN SIMULATION METRICS")
+        print("="*80)
+        
+        # Basic Blockchain Metrics
+        print("\n📊 BLOCKCHAIN PERFORMANCE METRICS:")
+        print(f"  • Total Blocks Created: {Statistics.totalBlocks}")
+        print(f"  • Main Chain Blocks: {Statistics.mainBlocks}")
+        print(f"  • Stale Blocks: {Statistics.staleBlocks}")
+        print(f"  • Stale Rate: {Statistics.staleRate}%")
+        print(f"  • Chain Length: {len(Statistics.chain)}")
+        
+        # Transaction Metrics
+        total_transactions = sum(len(block.transactions) for block in c.global_chain)
+        avg_tx_per_block = total_transactions / len(c.global_chain) if len(c.global_chain) > 0 else 0
+        print(f"  • Total Transactions: {total_transactions}")
+        print(f"  • Average Transactions per Block: {avg_tx_per_block:.2f}")
+        
+        # Network Metrics
+        total_miners = sum(1 for node in p.nodes if node.hashPower > 0)
+        total_nodes = len(p.nodes)
+        print(f"\n🌐 NETWORK METRICS:")
+        print(f"  • Total Nodes: {total_nodes}")
+        print(f"  • Mining Nodes: {total_miners}")
+        print(f"  • Non-mining Nodes: {total_nodes - total_miners}")
+        print(f"  • Mining Participation Rate: {(total_miners/total_nodes)*100:.2f}%")
+        
+        # Hash Power Distribution
+        total_hash_power = sum(node.hashPower for node in p.nodes)
+        if total_hash_power > 0:
+            print(f"  • Total Network Hash Power: {total_hash_power}")
+            max_hash_power = max(node.hashPower for node in p.nodes)
+            print(f"  • Maximum Single Node Hash Power: {max_hash_power}")
+            print(f"  • Hash Power Concentration: {(max_hash_power/total_hash_power)*100:.2f}%")
+        
+        # Mining Rewards and Economics
+        total_rewards = sum(node.balance for node in p.nodes)
+        print(f"\n💰 ECONOMIC METRICS:")
+        print(f"  • Total Rewards Distributed: {total_rewards:.6f} ETH")
+        print(f"  • Average Reward per Miner: {total_rewards/total_miners:.6f} ETH" if total_miners > 0 else "  • Average Reward per Miner: 0 ETH")
+        
+        # Top miners by blocks mined
+        miners_by_blocks = [(node.id, node.blocks, node.balance) for node in p.nodes if node.hashPower > 0]
+        miners_by_blocks.sort(key=lambda x: x[1], reverse=True)
+        print(f"  • Top 5 Miners by Blocks Mined:")
+        for i, (miner_id, blocks, balance) in enumerate(miners_by_blocks[:5]):
+            print(f"    {i+1}. Miner {miner_id}: {blocks} blocks, {balance:.6f} ETH")
+        
+        # Redaction Metrics (if enabled)
+        if p.enable_redaction:
+            print(f"\n🔄 REDACTION METRICS:")
+            print(f"  • Redaction Enabled: Yes")
+            print(f"  • Multi-party Redaction: {'Yes' if p.enable_multi_party else 'No'}")
+            print(f"  • Redaction Attempts: {p.redaction_attempts}")
+            
+            total_redactions = len(Statistics.redactResults)
+            total_redaction_profit = sum(result[3] for result in Statistics.redactResults)
+            avg_redaction_time = sum(result[4] for result in Statistics.redactResults) / total_redactions if total_redactions > 0 else 0
+            
+            print(f"  • Total Successful Redactions: {total_redactions}")
+            print(f"  • Total Redaction Profit: {total_redaction_profit:.6f} ETH")
+            print(f"  • Average Redaction Time: {avg_redaction_time:.2f} ms")
+            
+            if total_redactions > 0:
+                redaction_by_miner = {}
+                for result in Statistics.redactResults:
+                    miner_id = result[0]
+                    if miner_id not in redaction_by_miner:
+                        redaction_by_miner[miner_id] = {'count': 0, 'profit': 0}
+                    redaction_by_miner[miner_id]['count'] += 1
+                    redaction_by_miner[miner_id]['profit'] += result[3]
+                
+                print(f"  • Redactions by Miner:")
+                for miner_id, data in redaction_by_miner.items():
+                    print(f"    - Miner {miner_id}: {data['count']} redactions, {data['profit']:.6f} ETH profit")
+        else:
+            print(f"\n🔄 REDACTION METRICS:")
+            print(f"  • Redaction Enabled: No")
+        
+        # Configuration Metrics
+        print(f"\n⚙️  CONFIGURATION METRICS:")
+        print(f"  • Block Interval: {p.Binterval} seconds")
+        print(f"  • Block Size: {p.Bsize} MB")
+        print(f"  • Block Propagation Delay: {p.Bdelay} seconds")
+        print(f"  • Block Reward: {p.Breward} ETH")
+        if p.enable_redaction:
+            print(f"  • Redaction Reward: {p.Rreward} ETH")
+        print(f"  • Transaction Rate: {p.transaction_rate} tx/second")
+        print(f"  • Transaction Fee: {p.Tfee} ETH")
+        print(f"  • Transaction Size: {p.Tsize} MB")
+        print(f"  • Simulation Duration: {p.simulation_duration} seconds")
+        
+        # Security Metrics
+        print(f"\n🔒 SECURITY METRICS:")
+        if hasattr(p, 'admin_node_id'):
+            print(f"  • Admin Node ID: {p.admin_node_id}")
+        
+        # Chameleon Hash Parameters (if available)
+        try:
+            from CH.ChameleonHash import p as ch_p, q as ch_q, g as ch_g, SK, PK
+            print(f"  • Chameleon Hash Parameters:")
+            print(f"    - p: {str(ch_p)[:50]}..." if len(str(ch_p)) > 50 else f"    - p: {ch_p}")
+            print(f"    - q: {str(ch_q)[:50]}..." if len(str(ch_q)) > 50 else f"    - q: {ch_q}")
+            print(f"    - g: {ch_g}")
+            print(f"    - Secret Key: {str(SK)[:50]}..." if len(str(SK)) > 50 else f"    - Secret Key: {SK}")
+            print(f"    - Public Key: {str(PK)[:50]}..." if len(str(PK)) > 50 else f"    - Public Key: {PK}")
+        except ImportError:
+            print(f"  • Chameleon Hash: Not available")
+        
+        print("\n" + "="*80)
 
     ########################################################### Reset all global variables used to calculate the simulation results ###########################################################################################
     def reset():

@@ -52,6 +52,9 @@ def main():
 
         # calculate the simulation results (e.g., block statistics and miners' rewards)
         Statistics.calculate(t)
+        
+        # Display comprehensive metrics
+        Statistics.display_metrics()
 
         ########## reset all global variable before the next run #############
         Statistics.reset()  # reset all variables used to calculate the results
