@@ -10,6 +10,17 @@ The framework implements three pioneering redactable blockchain approaches:
 
 Each approach is implemented in its dedicated module under the directories `RBC_Ateniese`, `RBC_Deuber`, and `RBC_Puddu`.
 
+## Features
+
+- **Modular Simulation**: Easily switch between different redactable blockchain models.
+- **Configurable Parameters**: Change network size, transaction rates, block intervals, rewards, redaction policies, and more via `InputsConfig.py`.
+- **Chameleon Hash Functions**: Implements cryptographic primitives for redactable blocks.
+- **Secret Sharing Schemes**: Supports multi-party redaction with Shamir’s Secret Sharing and related cryptographic tools.
+- **Voting Mechanisms**: Implements permissionless, decentralized redaction based on block voting.
+- **Mutation & Data Privacy**: Simulates data mutation and selective transaction removal.
+- **Statistical Analysis**: Results are logged and can be exported for further analysis; includes block statistics, mining rewards, redaction performance, and timing metrics.
+- **Extensible Design**: Based on [BlockSim simulator](https://github.com/maher243/BlockSim), making it easy to add new blockchain models or extend current ones.
+
 ## Directory Structure
 
 ```
@@ -51,9 +62,6 @@ pip install openpyxl xlsxwriter pandas numpy
   - `python RBC_Deuber/Main.py`
   - `python RBC_Puddu/Main.py`
 - Simulation results, including performance metrics and statistics, will be printed to the console and saved to the `Results/` directory in Excel and CSV formats.
-
-## Experimental Framework
-The simulations in this project are conducted using the [BlockSim simulator](https://github.com/maher243/BlockSim). BlockSim is an open-source simulator specifically designed for blockchain systems. It provides intuitive simulation constructs and allows for customization to support multiple blockchain design and deployment scenarios. 
 
 ## References
 - [Deuber, D., Magri, B., & Thyagarajan, S. A. K. (2019, May). Redactable blockchain in the permissionless setting. In 2019 IEEE Symposium on Security and Privacy (SP) (pp. 124-138). IEEE.](https://ieeexplore.ieee.org/abstract/document/8835372)
