@@ -23,13 +23,26 @@ class Statistics:
     redactResults = []
     allRedactRuns = []
     round = 0
+    
+    # Timing metrics
+    simulation_start_time = 0
+    simulation_end_time = 0
+    total_execution_time = 0
+    block_creation_times = []
+    redaction_times = []
+    average_block_time = 0
+    average_redaction_time = 0
+    total_block_creation_time = 0
+    total_redaction_time = 0
 
     def calculate(t):
+        Statistics.total_execution_time = t
         Statistics.global_chain()  # print the global chain
         Statistics.blocks_results(t)  # calculate and print block statistics e.g., # of accepted blocks and stale rate etc
         Statistics.profit_results()  # calculate and distribute the revenue or reward for miners
         if p.enable_redaction:
             Statistics.redact_result()  # to calculate the info per redact operation
+        Statistics.calculate_timing_metrics()  # calculate timing statistics
 
     # Calculate block statistics Results
     def blocks_results(t):
@@ -89,6 +102,23 @@ class Statistics:
                     Statistics.redactResults.append(result)
             i += 1
         Statistics.allRedactRuns.append([profit_count, op_count])
+    
+    ########################################################## Calculate timing metrics ############################################################
+    def calculate_timing_metrics():
+        """Calculate comprehensive timing statistics"""
+        # Calculate block creation timing metrics
+        if Statistics.block_creation_times:
+            Statistics.total_block_creation_time = sum(Statistics.block_creation_times)
+            Statistics.average_block_time = Statistics.total_block_creation_time / len(Statistics.block_creation_times)
+        
+        # Calculate redaction timing metrics
+        if Statistics.redaction_times:
+            Statistics.total_redaction_time = sum(Statistics.redaction_times)
+            Statistics.average_redaction_time = Statistics.total_redaction_time / len(Statistics.redaction_times)
+        
+        # Calculate simulation timing
+        if Statistics.simulation_start_time > 0 and Statistics.simulation_end_time > 0:
+            Statistics.total_execution_time = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000  # in ms
 
     ########################################################### Print simulation results to Excel ###########################################################################################
     def print_to_excel(fname):
@@ -107,6 +137,18 @@ class Statistics:
         df4 = pd.DataFrame(Statistics.chain)
         df4.columns = ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions',
                        'Block Size']
+        
+        # Timing metrics dataframe
+        timing_data = {
+            'Total Execution Time (ms)': [Statistics.total_execution_time],
+            'Total Block Creation Time (ms)': [Statistics.total_block_creation_time],
+            'Average Block Creation Time (ms)': [Statistics.average_block_time],
+            'Total Redaction Time (ms)': [Statistics.total_redaction_time],
+            'Average Redaction Time (ms)': [Statistics.average_redaction_time],
+            'Block Creation Count': [len(Statistics.block_creation_times)],
+            'Redaction Count': [len(Statistics.redaction_times)]
+        }
+        df_timing = pd.DataFrame(timing_data)
 
         if p.enable_redaction:
             if p.redaction_attempts > 0:
@@ -126,6 +168,7 @@ class Statistics:
         df1.to_excel(writer, sheet_name='InputConfig')
         df2.to_excel(writer, sheet_name='SimOutput')
         df3.to_excel(writer, sheet_name='Profit')
+        df_timing.to_excel(writer, sheet_name='TimingMetrics')
         
         if p.enable_redaction and p.redaction_attempts > 0:
             df2.to_csv('Results/time_redact.csv', sep=',', mode='a+', index=False, header=True, encoding='utf-8')
@@ -242,6 +285,46 @@ class Statistics:
         print(f"  • Transaction Size: {p.Tsize} MB")
         print(f"  • Simulation Duration: {p.simulation_duration} seconds")
         
+        # Timing Performance Metrics
+        print(f"\n⏱️  TIMING PERFORMANCE METRICS:")
+        print(f"  • Total Execution Time: {Statistics.total_execution_time:.2f} ms")
+        
+        if Statistics.block_creation_times:
+            print(f"  • Total Block Creation Time: {Statistics.total_block_creation_time:.2f} ms")
+            print(f"  • Average Block Creation Time: {Statistics.average_block_time:.2f} ms")
+            print(f"  • Fastest Block Creation: {min(Statistics.block_creation_times):.2f} ms")
+            print(f"  • Slowest Block Creation: {max(Statistics.block_creation_times):.2f} ms")
+            print(f"  • Block Creation Efficiency: {(Statistics.total_block_creation_time/Statistics.total_execution_time)*100:.2f}%")
+        else:
+            print(f"  • Block Creation Times: No data available")
+        
+        if Statistics.redaction_times:
+            print(f"  • Total Redaction Time: {Statistics.total_redaction_time:.2f} ms")
+            print(f"  • Average Redaction Time: {Statistics.average_redaction_time:.2f} ms")
+            print(f"  • Fastest Redaction: {min(Statistics.redaction_times):.2f} ms")
+            print(f"  • Slowest Redaction: {max(Statistics.redaction_times):.2f} ms")
+            print(f"  • Redaction Efficiency: {(Statistics.total_redaction_time/Statistics.total_execution_time)*100:.2f}%")
+            
+            # Redaction vs Block Creation Performance Comparison
+            if Statistics.block_creation_times:
+                redaction_vs_block_ratio = Statistics.average_redaction_time / Statistics.average_block_time
+                print(f"  • Redaction vs Block Creation Ratio: {redaction_vs_block_ratio:.2f}x")
+        else:
+            print(f"  • Redaction Times: No data available")
+        
+        # Throughput Metrics
+        if Statistics.total_execution_time > 0:
+            blocks_per_second = (Statistics.mainBlocks / (Statistics.total_execution_time / 1000))
+            print(f"  • Block Throughput: {blocks_per_second:.2f} blocks/second")
+            
+            total_transactions = sum(len(block.transactions) for block in c.global_chain)
+            tx_per_second = total_transactions / (Statistics.total_execution_time / 1000)
+            print(f"  • Transaction Throughput: {tx_per_second:.2f} tx/second")
+            
+            if Statistics.redaction_times:
+                redactions_per_second = len(Statistics.redaction_times) / (Statistics.total_execution_time / 1000)
+                print(f"  • Redaction Throughput: {redactions_per_second:.2f} redactions/second")
+        
         # Security Metrics
         print(f"\n🔒 SECURITY METRICS:")
         if hasattr(p, 'admin_node_id'):
@@ -277,3 +360,9 @@ class Statistics:
         Statistics.chain = []
         Statistics.redactResults = []
         Statistics.allRedactRuns = []
+        Statistics.block_creation_times = []
+        Statistics.redaction_times = []
+        Statistics.total_block_creation_time = 0
+        Statistics.total_redaction_time = 0
+        Statistics.average_block_time = 0
+        Statistics.average_redaction_time = 0

@@ -15,7 +15,7 @@ from Models.Incentives import Incentives
 def main():
     print("START SIMULATION >>")
     for i in range(p.simulation_runs):
-        t1 = time.time()
+        Statistics.simulation_start_time = time.perf_counter()
         clock = 0  # set clock to 0 at the start of the simulation
         if p.enable_transactions:
             if p.transaction_model_type == "Light":
@@ -46,9 +46,9 @@ def main():
             BlockCommit.generate_redaction_event(p.redaction_attempts)
         Consensus.fork_resolution()  # apply the longest chain to resolve the forks
         Incentives.distribute_rewards()  # distribute the rewards between the participating nodes
-        t2 = time.time()
-        t = (t2 -t1)* 1000
-        print(f"Total time = {t}")
+        Statistics.simulation_end_time = time.perf_counter()
+        t = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000
+        print(f"Total simulation time = {t:.2f} ms")
 
         # calculate the simulation results (e.g., block statistics and miners' rewards)
         Statistics.calculate(t)
