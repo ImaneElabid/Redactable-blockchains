@@ -115,10 +115,6 @@ class Statistics:
         if Statistics.redaction_times:
             Statistics.total_redaction_time = sum(Statistics.redaction_times)
             Statistics.average_redaction_time = Statistics.total_redaction_time / len(Statistics.redaction_times)
-        
-        # Calculate simulation timing
-        if Statistics.simulation_start_time > 0 and Statistics.simulation_end_time > 0:
-            Statistics.total_execution_time = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000  # in ms
 
     ########################################################### Print simulation results to Excel ###########################################################################################
     def print_to_excel(fname):
@@ -146,7 +142,10 @@ class Statistics:
             'Total Redaction Time (ms)': [Statistics.total_redaction_time],
             'Average Redaction Time (ms)': [Statistics.average_redaction_time],
             'Block Creation Count': [len(Statistics.block_creation_times)],
-            'Redaction Count': [len(Statistics.redaction_times)]
+            'Redaction Count': [len(Statistics.redaction_times)],
+            'Block Throughput (blocks/sec)': [Statistics.mainBlocks / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 else 0],
+            'Transaction Throughput (tx/sec)': [sum(len(block.transactions) for block in c.global_chain) / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 else 0],
+            'Redaction Throughput (redactions/sec)': [len(Statistics.redaction_times) / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 and Statistics.redaction_times else 0]
         }
         df_timing = pd.DataFrame(timing_data)
 
@@ -290,6 +289,8 @@ class Statistics:
         print(f"  • Total Execution Time: {Statistics.total_execution_time:.2f} ms")
         
         if Statistics.block_creation_times:
+            Statistics.total_block_creation_time = sum(Statistics.block_creation_times)
+            Statistics.average_block_time = Statistics.total_block_creation_time / len(Statistics.block_creation_times)
             print(f"  • Total Block Creation Time: {Statistics.total_block_creation_time:.2f} ms")
             print(f"  • Average Block Creation Time: {Statistics.average_block_time:.2f} ms")
             print(f"  • Fastest Block Creation: {min(Statistics.block_creation_times):.2f} ms")
@@ -299,6 +300,8 @@ class Statistics:
             print(f"  • Block Creation Times: No data available")
         
         if Statistics.redaction_times:
+            Statistics.total_redaction_time = sum(Statistics.redaction_times)
+            Statistics.average_redaction_time = Statistics.total_redaction_time / len(Statistics.redaction_times)
             print(f"  • Total Redaction Time: {Statistics.total_redaction_time:.2f} ms")
             print(f"  • Average Redaction Time: {Statistics.average_redaction_time:.2f} ms")
             print(f"  • Fastest Redaction: {min(Statistics.redaction_times):.2f} ms")
@@ -324,6 +327,40 @@ class Statistics:
             if Statistics.redaction_times:
                 redactions_per_second = len(Statistics.redaction_times) / (Statistics.total_execution_time / 1000)
                 print(f"  • Redaction Throughput: {redactions_per_second:.2f} redactions/second")
+        
+        # Network Efficiency Metrics
+        print(f"\n📈 NETWORK EFFICIENCY METRICS:")
+        if Statistics.total_execution_time > 0:
+            simulation_time_seconds = Statistics.total_execution_time / 1000
+            print(f"  • Simulation Duration: {simulation_time_seconds:.2f} seconds")
+            print(f"  • Average Block Time: {p.Binterval} seconds (configured)")
+            if Statistics.mainBlocks > 0:
+                actual_avg_block_time = simulation_time_seconds / Statistics.mainBlocks
+                print(f"  • Actual Average Block Time: {actual_avg_block_time:.2f} seconds")
+                efficiency = (p.Binterval / actual_avg_block_time) * 100
+                print(f"  • Block Time Efficiency: {efficiency:.2f}%")
+        
+        # Memory and Storage Metrics
+        total_blockchain_size = sum(block.size for block in c.global_chain)
+        avg_block_size = total_blockchain_size / len(c.global_chain) if len(c.global_chain) > 0 else 0
+        print(f"\n💾 STORAGE METRICS:")
+        print(f"  • Total Blockchain Size: {total_blockchain_size:.6f} MB")
+        print(f"  • Average Block Size: {avg_block_size:.6f} MB")
+        print(f"  • Configured Block Size: {p.Bsize} MB")
+        
+        # Transaction Metrics Detail
+        if len(c.global_chain) > 0:
+            total_transactions = sum(len(block.transactions) for block in c.global_chain)
+            avg_tx_per_block = total_transactions / len(c.global_chain)
+            total_tx_fees = sum(sum(tx.fee for tx in block.transactions) for block in c.global_chain)
+            avg_tx_fee = total_tx_fees / total_transactions if total_transactions > 0 else 0
+            
+            print(f"\n💳 DETAILED TRANSACTION METRICS:")
+            print(f"  • Total Transactions: {total_transactions}")
+            print(f"  • Average Transactions per Block: {avg_tx_per_block:.2f}")
+            print(f"  • Total Transaction Fees: {total_tx_fees:.6f} ETH")
+            print(f"  • Average Transaction Fee: {avg_tx_fee:.6f} ETH")
+            print(f"  • Configured Transaction Rate: {p.transaction_rate} tx/second")
         
         # Security Metrics
         print(f"\n🔒 SECURITY METRICS:")

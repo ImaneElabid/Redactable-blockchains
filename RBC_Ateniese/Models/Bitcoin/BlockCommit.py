@@ -143,10 +143,10 @@ class BlockCommit(BaseBlockCommit):
                 BlockCommit.redact_tx(miner, block_index, tx_index, p.Tfee)
             else:
                 BlockCommit.delete_tx(miner, block_index, tx_index)
-            t2=time.time()
-            t = (t2 - t1) * 1000  # in ms
-            print(f"Redaction time = {t:6f} ms")
             i += 1
+        t2 = time.time()
+        total_redaction_time = (t2 - t1) * 1000  # in ms
+        print(f"Total redaction operations time = {total_redaction_time:.2f} ms")
 
     def delete_tx(miner, i, tx_i):
         t1 = time.time()
