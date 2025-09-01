@@ -97,5 +97,5 @@ class InputsConfig:
         admin_node_id = 10
 
         ''' --- Simulation Parameters --- '''
-        simulation_duration = 1000  # Simulation length (seconds) - reduced for faster testing
+        simulation_duration = 50000  # Simulation length (seconds)
         simulation_runs = 1  # Number of simulation runs

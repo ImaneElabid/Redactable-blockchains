@@ -1,3 +1,5 @@
+import datetime
+
 from InputsConfig import InputsConfig as p
 from Event import Event, Queue
 from Scheduler import Scheduler
@@ -60,8 +62,13 @@ def main():
         ########## reset all global variable before the next run #############
         Statistics.reset()  # reset all variables used to calculate the results
         Node.resetState()  # reset all the states (blockchains) for all nodes in the network
-        fname = "{0}M_{1}_{2}K.xlsx".format(
-            p.Bsize / 1000000, p.transaction_rate / 1000, p.Tsize)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Example model name (can be set dynamically based on model)
+        model_name = "Ch-Hash-Redaction"  # or "Deuber", "Puddu" depending on the module
+
+        # Compose a descriptive filename
+        fname = f"Results_{model_name}_nodes{len(p.nodes)}_bsize{p.Bsize}_tsize{p.Tsize}_{timestamp}.xlsx"
+
         # print all the simulation results in an excel file
         Statistics.print_to_excel(fname)
         Statistics.reset2()  # reset profit results

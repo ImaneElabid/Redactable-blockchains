@@ -236,7 +236,6 @@ class BlockCommit(BaseBlockCommit):
         t2 = time.time()
         t = (t2 - t1) * 1000 # in ms
         block.redaction_time =t
-        # print(f"Redaction succeeded in {t}")
         # redact operation is more expensive than mining
         reward = random.expovariate(1 / p.Rreward)
         miner.balance += reward

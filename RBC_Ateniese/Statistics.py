@@ -3,8 +3,6 @@ from Models.Consensus import Consensus as c
 from Models.Incentives import Incentives
 import pandas as pd
 import os
-from openpyxl import load_workbook
-
 
 class Statistics:
     # Global variables used to calculate and print simulation results
