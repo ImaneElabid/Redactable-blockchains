@@ -32,13 +32,26 @@ class Statistics:
     redact_st = 0
     redact_et = 0
     tx_summary = {}     # {ref_T.id: all txs of the corresponding transaction set}
+    
+    # Timing metrics
+    simulation_start_time = 0
+    simulation_end_time = 0
+    total_execution_time = 0
+    block_creation_times = []
+    redaction_times = []
+    average_block_time = 0
+    average_redaction_time = 0
+    total_block_creation_time = 0
+    total_redaction_time = 0
 
     def calculate(t):
+        Statistics.total_execution_time = t
         Statistics.global_chain()  # print the global chain
         Statistics.blocks_results(t)  # calculate and print block statistics e.g., # of accepted blocks and stale rate etc
         #  Statistics.profit_results(t)  # calculate and distribute the revenue or reward for miners
         if p.enable_redaction:
             Statistics.redact_result()  # to calculate the info per redact operation
+        Statistics.calculate_timing_metrics()  # calculate timing statistics
 
     # Calculate block statistics Results
     def blocks_results(t):
@@ -101,6 +114,19 @@ class Statistics:
                     Statistics.redactResults.append(result)
             i += 1
         Statistics.allRedactRuns.append([profit_count, op_count])
+    
+    ########################################################## Calculate timing metrics ############################################################
+    def calculate_timing_metrics():
+        """Calculate comprehensive timing statistics"""
+        # Calculate block creation timing metrics
+        if Statistics.block_creation_times:
+            Statistics.total_block_creation_time = sum(Statistics.block_creation_times)
+            Statistics.average_block_time = Statistics.total_block_creation_time / len(Statistics.block_creation_times)
+        
+        # Calculate redaction timing metrics
+        if Statistics.redaction_times:
+            Statistics.total_redaction_time = sum(Statistics.redaction_times)
+            Statistics.average_redaction_time = Statistics.total_redaction_time / len(Statistics.redaction_times)
 
     ########################################################### Print simulation results to Excel ###########################################################################################
     def print_to_excel(fname):
@@ -123,6 +149,21 @@ class Statistics:
         # df4.columns= ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions','Block Size']
         df4.columns = ['Block Depth', 'Block ID', 'Previous Block', 'Block Timestamp', 'Miner ID', '# transactions',
                            'Block Size']
+        
+        # Timing metrics dataframe
+        timing_data = {
+            'Total Execution Time (ms)': [Statistics.total_execution_time],
+            'Total Block Creation Time (ms)': [Statistics.total_block_creation_time],
+            'Average Block Creation Time (ms)': [Statistics.average_block_time],
+            'Total Redaction Time (ms)': [Statistics.total_redaction_time],
+            'Average Redaction Time (ms)': [Statistics.average_redaction_time],
+            'Block Creation Count': [len(Statistics.block_creation_times)],
+            'Redaction Count': [len(Statistics.redaction_times)],
+            'Block Throughput (blocks/sec)': [Statistics.mainBlocks / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 else 0],
+            'Transaction Throughput (tx/sec)': [sum(len(block.transactions) for block in c.global_chain) / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 else 0],
+            'Redaction Throughput (redactions/sec)': [len(Statistics.redaction_times) / (Statistics.total_execution_time / 1000) if Statistics.total_execution_time > 0 and Statistics.redaction_times else 0]
+        }
+        df_timing = pd.DataFrame(timing_data)
 
         if p.enable_redaction:
             if p.redaction_attempts > 0:
@@ -145,6 +186,8 @@ class Statistics:
         df1.to_excel(writer, sheet_name='InputConfig')
         df2.to_excel(writer, sheet_name='SimOutput')
         df3.to_excel(writer, sheet_name='Profit')
+        df_timing.to_excel(writer, sheet_name='TimingMetrics')
+        
         if p.enable_redaction and p.redaction_attempts > 0:
             # df2.to_csv('Results/time_redact.csv', sep=',', mode='a+', index=False, header=False)
             df7.to_excel(writer, sheet_name='ChainBeforeRedaction')

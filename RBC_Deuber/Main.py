@@ -14,7 +14,7 @@ from Models.Incentives import Incentives
 def main():
     print("START SIMULATION >>")
     for i in range(p.simulation_runs):
-        t1 = time.perf_counter()
+        Statistics.simulation_start_time = time.perf_counter()
         clock = 0  # set clock to 0 at the start of the simulation
         if p.enable_transactions:
             if p.transaction_model_type == "Light":
@@ -43,13 +43,16 @@ def main():
         # distribute the rewards between the participating nodes
         Incentives.distribute_rewards()
         # print the global chain
-        t2 = time.perf_counter()
-        t = (t2 -t1) * 1000
-        print(f">>>> Total time: {t}")
+        Statistics.simulation_end_time = time.perf_counter()
+        Statistics.total_execution_time = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000
+        t = Statistics.total_execution_time
+        print(f"Total simulation time = {t:.2f} ms")
 
         # calculate the simulation results (e.g., block statistics and miners' rewards)
         Statistics.calculate(t)
-        #!print(Statistics.redactResults)
+        
+        # Display comprehensive metrics
+        Statistics.display_metrics()
 
 
         ########## reset all global variable before the next run #############
