@@ -47,7 +47,8 @@ def main():
         Consensus.fork_resolution()  # apply the longest chain to resolve the forks
         Incentives.distribute_rewards()  # distribute the rewards between the participating nodes
         Statistics.simulation_end_time = time.perf_counter()
-        t = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000
+        Statistics.total_execution_time = (Statistics.simulation_end_time - Statistics.simulation_start_time) * 1000
+        t = Statistics.total_execution_time
         print(f"Total simulation time = {t:.2f} ms")
 
         # calculate the simulation results (e.g., block statistics and miners' rewards)
