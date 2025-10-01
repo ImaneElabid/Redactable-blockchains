@@ -1,6 +1,8 @@
-# Redactable-blockchains
+# Redactable Blockchains: A Systematic Survey of Techniques, Taxonomies, and Benchmarks
 ## Overview
-This project provides an experimental framework for simulating and evaluating **redactable blockchain systems**. 
+
+This repository contains the source code for the experimental framework used for simulating and evaluating various **redactable blockchain systems** as part of the experimental evaluation of the review paper.
+
 Redactable blockchains introduce the ability to modify or remove specific data from the blockchain such as transactions or blocks, while preserving the cryptographic integrity and auditability of the chain. This feature is crucial for compliance with privacy regulations (e.g., GDPR), error correction, and selective data removal in decentralized systems.
 The framework implements three pioneering redactable blockchain approaches:
 
@@ -62,6 +64,18 @@ pip install openpyxl xlsxwriter pandas numpy
   - `python RBC_Deuber/Main.py`
   - `python RBC_Puddu/Main.py`
 - Simulation results, including performance metrics and statistics, will be printed to the console and saved to the `Results/` directory in Excel and CSV formats.
+
+## Energy Consumption estimation
+To measure the energy consumption of the each of the models, run the following command:
+
+`./run.sh -c 0 -p avg -r 10 -d 2 -e "python RBC_Deuber/Main.py"`
+
+`./run.sh -c 0 -p avg -r 10 -d 2 -e "python RBC_Deuber/Main.py"`
+
+`./run.sh -c 0 -p avg -r 10 -d 2 -e "python RBC_Puddu/Main.py"`
+
+For more detail about the energy script run the command: `./run.sh --help`
+
 
 ## References
 - [Deuber, D., Magri, B., & Thyagarajan, S. A. K. (2019, May). Redactable blockchain in the permissionless setting. In 2019 IEEE Symposium on Security and Privacy (SP) (pp. 124-138). IEEE.](https://ieeexplore.ieee.org/abstract/document/8835372)
