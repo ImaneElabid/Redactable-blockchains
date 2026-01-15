@@ -1,27 +1,43 @@
-# Redactable Blockchains: A Systematic Survey of Techniques, Taxonomies, and Benchmarks
+# Redactable Blockchains: A Systematic Survey of Techniques, Taxonomies, and Benchmarks  
+
+
+
 ## Overview
 
-This repository contains the source code for the experimental framework used for simulating and evaluating various **redactable blockchain systems** as part of the experimental evaluation of the review paper.
+This repository provides the source code and experimental framework used to simulate, evaluate, and reproduce the experimental results presented in the associated survey paper on **redactable blockchain systems**.
 
-Redactable blockchains introduce the ability to modify or remove specific data from the blockchain such as transactions or blocks, while preserving the cryptographic integrity and auditability of the chain. This feature is crucial for compliance with privacy regulations (e.g., GDPR), error correction, and selective data removal in decentralized systems.
-The framework implements three pioneering redactable blockchain approaches:
+Redactable blockchains enable the modification or removal of specific blockchain data (e.g., transactions or blocks) while preserving cryptographic consistency, auditability, and chain validity. Such functionality is essential for regulatory compliance (e.g., GDPR), error correction, and controlled data removal in decentralized systems.
 
-- **Ateniese et al. (Chameleon Hash-based Redaction)**
-- **Deuber et al. (Voting-based Redaction)**
-- **Puddu et al. ($\mu$chain Mutation-based Redaction)**
+The framework implements and evaluates three representative and widely cited redactable blockchain designs:
 
-Each approach is implemented in its dedicated module under the directories `RBC_Ateniese`, `RBC_Deuber`, and `RBC_Puddu`.
+- **Ateniese et al.** — Chameleon hash–based redaction  
+- **Deuber et al.** — Voting-based redaction in permissionless blockchains  
+- **Puddu et al.** — Mutation-based redaction ($\mu$chain)
 
-## Features
+Each approach is implemented as an independent module to ensure isolation, comparability, and extensibility.
 
-- **Modular Simulation**: Easily switch between different redactable blockchain models.
-- **Configurable Parameters**: Change network size, transaction rates, block intervals, rewards, redaction policies, and more via `InputsConfig.py`.
-- **Chameleon Hash Functions**: Implements cryptographic primitives for redactable blocks.
-- **Secret Sharing Schemes**: Supports multi-party redaction with Shamir’s Secret Sharing and related cryptographic tools.
-- **Voting Mechanisms**: Implements permissionless, decentralized redaction based on block voting.
-- **Mutation & Data Privacy**: Simulates data mutation and selective transaction removal.
-- **Statistical Analysis**: Results are logged and can be exported for further analysis; includes block statistics, mining rewards, redaction performance, and timing metrics.
-- **Extensible Design**: Based on [BlockSim simulator](https://github.com/maher243/BlockSim), making it easy to add new blockchain models or extend current ones.
+
+
+## Implemented Models
+
+- `RBC_Ateniese/` — Chameleon hash–based redactable blockchain  
+- `RBC_Deuber/` — Voting-based redactable blockchain  
+- `RBC_Puddu/` — Mutation-based redactable blockchain ($\mu$chain)
+
+
+
+## Key Features
+
+- *Modular simulation architecture*: Easily switch between different redactable blockchain models.
+- *Configurable experimental parameters*: Change network size, transaction rates, block intervals, rewards, redaction policies, and more via `InputsConfig.py`.
+- *Cryptographic primitives (chameleon hashes)*: Implements cryptographic primitives for redactable blocks.
+- *Secret sharing mechanisms*: Supports multi-party redaction with Shamir’s Secret Sharing and related cryptographic tools.
+- *Decentralized voting protocols*: Implements permissionless, decentralized redaction based on block voting.
+- *Mutation and selective data removal*: Simulates data mutation and selective transaction removal.
+- *Experimental logging and statistics*: Results are logged and can be exported for further analysis; includes block statistics, mining rewards, redaction performance, and timing metrics.
+- *Extensible design*: Based on [BlockSim simulator](https://github.com/maher243/BlockSim), making it easy to add new blockchain models or extend current ones.
+
+
 
 ## Directory Structure
 
@@ -36,36 +52,70 @@ Redactable-blockchains/
 └── ...             # Supporting scripts and configs
 ```
 
-## How to Run the Project
 
-### 1. Install Requirements
 
-Clone the repository and install dependencies:
+## Installation
 
 ```bash
-git clone <repo-url>
+git clone <anon-repo-url>
 cd Redactable-blockchains
-
 pip install -r requirements.txt
-# or, manually:
-pip install openpyxl xlsxwriter pandas numpy
 ```
-### 2. Configure Simulation
 
-- Use [PyCharm](https://www.jetbrains.com/pycharm/) or your preferred Python IDE.
-- Edit the `InputsConfig.py` file in your desired model directory (`RBC_Ateniese`, `RBC_Deuber`, `RBC_Puddu`):
-  - Set simulation parameters, network size, model type, redaction options, and more.
-- Explore cryptographic primitives in the `CH/` (Chameleon Hash) and `Models/` modules.
 
-### 3. Run Simulation
 
-- Execute the main script for the desired model:
+## Reproducing Experimental Results
+
+#### 1. Performance time (Fig. 7, Fig. 10, Fig. 11)
+
+- Update the configuration file as in the figure:
+
+  ```python
+  model = 1 # Bitcoin model
+  total_nodes = 1000
+  enable_redaction = True
+  redaction_attempts = 1
+  redactions = 1
+  simulation_duration = 5000
+  simulation_runs = 10
+  ```
+
+- Execute the main script for the redaction models:
+
   - `python RBC_Ateniese/Main.py`
   - `python RBC_Deuber/Main.py`
   - `python RBC_Puddu/Main.py`
+
+- For baseline use configuration file with `enable_redaction = False`
+
 - Simulation results, including performance metrics and statistics, will be printed to the console and saved to the `Results/` directory in Excel and CSV formats.
 
-## Energy Consumption estimation
+#### 2. Impact of validators count on redaction time (Fig.9)
+
+- Update the configuration file as in the figure:
+
+  `````
+  miner_fraction = 0.1 # 0.1, 0.3, 0.5, ...
+  `````
+
+- Execute the main script for the voting-based model:
+  - `python RBC_Ateniese/Main.py`
+- Collect the Execution time and reduction time (s)
+
+#### 3. Storage evolution of $\mu$chain (Fig. 12)
+
+- Update the configuration file as in the figure:
+
+  `````
+  simulation_duration = 50000
+  `````
+
+- Execute the main script for the voting-based model:
+  - `python RBC_Puddu/Main.py`
+- Collect the size of the chain (mb)
+
+#### 4. Energy Consumption estimation (Fig. 13)
+
 To measure the energy consumption of the each of the models, run the following command:
 
 `./run.sh -c 0 -p avg -r 10 -d 2 -e "python RBC_Deuber/Main.py"`
@@ -77,10 +127,14 @@ To measure the energy consumption of the each of the models, run the following c
 For more detail about the energy script run the command: `./run.sh --help`
 
 
+
 ## References
+
 - [Deuber, D., Magri, B., & Thyagarajan, S. A. K. (2019, May). Redactable blockchain in the permissionless setting. In 2019 IEEE Symposium on Security and Privacy (SP) (pp. 124-138). IEEE.](https://ieeexplore.ieee.org/abstract/document/8835372)
 - [Ateniese, G., Magri, B., Venturi, D., & Andrade, E. (2017, April). Redactable blockchain–or–rewriting history in bitcoin and friends. In 2017 IEEE European symposium on security and privacy (EuroS&P) (pp. 111-126). IEEE.](https://ieeexplore.ieee.org/abstract/document/7961975/)
-- [Puddu, I., Dmitrienko, A., & Capkun, S. (2017). $\mu $ chain: How to Forget without Hard Forks. Cryptology ePrint Archive.](https://eprint.iacr.org/2017/106)
+- [Puddu, I., Dmitrienko, A., & Capkun, S. (2017). $\mu$ chain: How to Forget without Hard Forks. Cryptology ePrint Archive.](https://eprint.iacr.org/2017/106)
+
+
 
 ## License
 
